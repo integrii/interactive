@@ -16,15 +16,13 @@ var Debug bool
 // Session is an interactive console session for the specified
 // command and arguments.
 type Session struct {
-	stdIn   io.Writer   // input to be written to the console
-	stdOut  io.Reader   // output coming from the console
-	stdErr  io.Reader   // error output from the shell
-	Input   chan string // incoming lines of input
-	Output  chan string // outgoing lines of input
-	cmd     *exec.Cmd   // cmd that holds this cmd instance
-	pty     *os.File    // the tty for the session
-	command string      // command to run
-	args    []string    // arguments to pass to running command
+	StdIn  io.Writer   // input to be written to the console
+	StdOut io.Reader   // output coming from the console
+	StdErr io.Reader   // error output from the shell
+	Input  chan string // incoming lines of input
+	Output chan string // outgoing lines of input
+	Cmd    *exec.Cmd   // cmd that holds this cmd instance
+	PTY    *os.File    // the tty for the session
 }
 
 // WriteString writes a string to the console as if you wrote
@@ -33,14 +31,14 @@ func (i *Session) writeString(s string) error {
 	if Debug {
 		fmt.Println("Writing string:", s)
 	}
-	_, err := i.pty.WriteString(s + "\r")
+	_, err := i.PTY.WriteString(s + "\r")
 	return err
 }
 
 // startErrorReader starts an error reader that outputs
 // to the output channel
 func (i *Session) startErrorReader() {
-	reader := bufio.NewScanner(i.stdErr)
+	reader := bufio.NewScanner(i.StdErr)
 	if Debug {
 		fmt.Println("Error reader looking for output")
 	}
@@ -57,7 +55,7 @@ func (i *Session) startErrorReader() {
 
 // startOutputReader reads output and puts it into the output channel
 func (i *Session) startOutputReader() {
-	reader := bufio.NewScanner(i.pty)
+	reader := bufio.NewScanner(i.PTY)
 	if Debug {
 		fmt.Println("Output reader looking for output")
 	}
@@ -87,7 +85,7 @@ func (i *Session) startInputForwarder() {
 // Exit exits the running command and closes the input channel
 func (i *Session) Exit() {
 
-	i.cmd.Process.Signal(os.Interrupt)
+	i.Cmd.Process.Signal(os.Interrupt)
 
 	// close will cause the io workers to stop gracefully
 	close(i.Input)
@@ -113,10 +111,10 @@ func (i *Session) Write(s string) {
 func (i *Session) closeWhenCompleted() {
 
 	if Debug {
-		fmt.Println("Spawned command as PID", i.cmd.Process.Pid)
+		fmt.Println("Spawned command as PID", i.Cmd.Process.Pid)
 	}
 
-	i.cmd.Wait()
+	i.Cmd.Wait()
 	if Debug {
 		fmt.Println("Command exited. Closing channels.")
 	}
@@ -130,35 +128,35 @@ func NewInteractiveSession(command string, args []string) (*Session, error) {
 	var err error
 
 	// setup the command and input/output pipes
-	session.cmd = exec.Command(command, args...)
-	errPipe, err := session.cmd.StderrPipe()
+	session.Cmd = exec.Command(command, args...)
+	errPipe, err := session.Cmd.StderrPipe()
 	if err != nil {
 		return &session, err
 	}
-	inPipe, err := session.cmd.StdinPipe()
+	inPipe, err := session.Cmd.StdinPipe()
 	if err != nil {
 		return &session, err
 	}
-	outPipe, err := session.cmd.StdoutPipe()
+	outPipe, err := session.Cmd.StdoutPipe()
 	if err != nil {
 		return &session, err
 	}
 
 	// bind sessions to struct
-	session.stdOut = outPipe
-	session.stdIn = inPipe
-	session.stdErr = errPipe
+	session.StdOut = outPipe
+	session.StdIn = inPipe
+	session.StdErr = errPipe
 
 	// make channels for input and outut communication to the process
 	session.Input = make(chan string, 1)
 	session.Output = make(chan string, 5000)
 
 	if Debug {
-		fmt.Println("Starting command:", session.cmd.Args)
+		fmt.Println("Starting command:", session.Cmd.Args)
 	}
 
 	// kick off the command and ensure it closes when done
-	session.pty, _ = pty.Start(session.cmd)
+	session.PTY, err = pty.Start(session.Cmd)
 	if err != nil {
 		return &session, err
 	}
@@ -173,5 +171,5 @@ func NewInteractiveSession(command string, args []string) (*Session, error) {
 
 // ForceClose issues a force kill to the command (SIGKILL)
 func (i *Session) ForceClose() {
-	i.cmd.Process.Kill()
+	i.Cmd.Process.Kill()
 }
