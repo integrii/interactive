@@ -26,3 +26,23 @@ func outputPrinter(c chan string) {
 		fmt.Println(s)
 	}
 }
+
+func ExampleSession() {
+	// Start the command "bc" (a CLI calculator)
+	bc, err := interactive.NewInteractiveSession("bc", []string{})
+	if err != nil {
+		panic(err)
+	}
+
+	// start a concurrent output reader from the output channel of our command
+	go outputPrinter(bc.Output)
+
+	// wait a second for the process to init
+	time.Sleep(time.Second)
+
+	// write 1 + 1 to the bc prompt
+	bc.Write(`1 + 1`)
+
+	// wait one second for the output to come and be displayed
+	time.Sleep(time.Second)
+}

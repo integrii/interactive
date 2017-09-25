@@ -35,8 +35,6 @@ func main() {
   // wait one second for the output to come and be displayed
   time.Sleep(time.Second)
 
-  // send a Command-C interrupt to the program to end it
-  bc.Stop()
 }
 
 func outputPrinter(c chan string) {
