@@ -122,8 +122,8 @@ func (i *Session) closeWhenCompleted() {
 
 }
 
-// NewInteractiveSession starts a new interactive command session
-func NewInteractiveSession(command string, args []string) (*Session, error) {
+// NewSession starts a new interactive command session
+func NewSession(command string, args []string) (*Session, error) {
 	var session Session
 	var err error
 
