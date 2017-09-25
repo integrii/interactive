@@ -35,7 +35,11 @@ func ExampleSession() {
 	}
 
 	// start a concurrent output reader from the output channel of our command
-	go outputPrinter(bc.Output)
+	go func(outChan chan string) {
+		for s := range outChan {
+			fmt.Println(s)
+		}
+	}(bc.Output)
 
 	// wait a second for the process to init
 	time.Sleep(time.Second)
