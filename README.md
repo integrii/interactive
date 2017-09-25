@@ -9,6 +9,7 @@ Automate nearly any command line execution in a go program!
 
 ## Read the Godoc
 
+[https://godoc.org/github.com/integrii/interactive](https://godoc.org/github.com/integrii/interactive)
 
 
 ## Example

@@ -21,7 +21,7 @@ type Session struct {
 	stdErr  io.Reader   // error output from the shell
 	Input   chan string // incoming lines of input
 	Output  chan string // outgoing lines of input
-	cmd     *exec.Cmd   // cmd that holds this chrome instance
+	cmd     *exec.Cmd   // cmd that holds this cmd instance
 	pty     *os.File    // the tty for the session
 	command string      // command to run
 	args    []string    // arguments to pass to running command
@@ -93,7 +93,7 @@ func (i *Session) Exit() {
 	close(i.Input)
 }
 
-// Init runs things required to initalize a chrome session.
+// Init runs things required to initalize a session.
 // No need to call outside of NewInteractiveSession (which does
 // it for you)
 func (i *Session) Init() {
@@ -113,7 +113,7 @@ func (i *Session) Write(s string) {
 func (i *Session) closeWhenCompleted() {
 
 	if Debug {
-		fmt.Println("Spawned chrome as PID", i.cmd.Process.Pid)
+		fmt.Println("Spawned command as PID", i.cmd.Process.Pid)
 	}
 
 	i.cmd.Wait()
@@ -122,10 +122,9 @@ func (i *Session) closeWhenCompleted() {
 	}
 	close(i.Output)
 
-	i.forceClose() // when complete, make sure the PID dies (chrome never does on its own as of writing)
 }
 
-// NewInteractiveSession starts a new chrome headless session.
+// NewInteractiveSession starts a new interactive command session
 func NewInteractiveSession(command string, args []string) (*Session, error) {
 	var session Session
 	var err error
@@ -172,7 +171,7 @@ func NewInteractiveSession(command string, args []string) (*Session, error) {
 
 }
 
-// forceClose issues a force kill to the command
-func (i *Session) forceClose() {
+// ForceClose issues a force kill to the command (SIGKILL)
+func (i *Session) ForceClose() {
 	i.cmd.Process.Kill()
 }
