@@ -23,6 +23,7 @@ type Session struct {
 	Output chan string // outgoing lines of input
 	Cmd    *exec.Cmd   // cmd that holds this cmd instance
 	PTY    *os.File    // the tty for the session
+	closed bool        // indicates input channels have been closed
 }
 
 // WriteString writes a string to the console as if you wrote
@@ -43,12 +44,13 @@ func (i *Session) startErrorReader() {
 		fmt.Println("Error reader looking for output")
 	}
 	for reader.Scan() {
+		text := reader.Text()
 		if Debug {
-			fmt.Println("Error reader got text:", reader.Text())
+			fmt.Println("Error reader got text:", text)
 		}
-		i.Output <- reader.Text()
+		i.Output <- text
 		if Debug {
-			fmt.Println("Error reader passed output to channel:", reader.Text())
+			fmt.Println("Error reader passed output to channel:", text)
 		}
 	}
 }
@@ -84,11 +86,7 @@ func (i *Session) startInputForwarder() {
 
 // Exit exits the running command and closes the input channel
 func (i *Session) Exit() {
-
 	i.Cmd.Process.Signal(os.Interrupt)
-
-	// close will cause the io workers to stop gracefully
-	close(i.Input)
 }
 
 // Init runs things required to initalize a session.
@@ -103,7 +101,11 @@ func (i *Session) Init() {
 
 // Write writes an output line into the session
 func (i *Session) Write(s string) {
-	i.Input <- s
+
+	// dont actually write if the command has completed
+	if !i.closed {
+		i.Input <- s
+	}
 }
 
 // closeWhenCompleted closes ouput channels to cause readers to
@@ -116,8 +118,12 @@ func (i *Session) closeWhenCompleted() {
 
 	i.Cmd.Wait()
 	if Debug {
-		fmt.Println("Command exited. Closing channels.")
+		fmt.Println("Command exited. Closing input channel.")
 	}
+
+	// indicate the session is closed and close our channels
+	i.closed = true
+	close(i.Input)
 	close(i.Output)
 
 }
