@@ -10,7 +10,7 @@ import (
 
 func TestInteractiveCommandBC(t *testing.T) {
 	// Run BC and hand it 1+1 to see what it does
-	bc, err := interactive.NewInteractiveSession("bc", []string{})
+	bc, err := interactive.NewSession("bc", []string{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,7 +29,7 @@ func outputPrinter(c chan string) {
 
 func ExampleSession() {
 	// Start the command "bc" (a CLI calculator)
-	bc, err := interactive.NewInteractiveSession("bc", []string{})
+	bc, err := interactive.NewSession("bc", []string{})
 	if err != nil {
 		panic(err)
 	}
