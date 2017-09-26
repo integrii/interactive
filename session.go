@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"time"
 
 	"github.com/kr/pty"
 )
@@ -16,14 +17,16 @@ var Debug bool
 // Session is an interactive console session for the specified
 // command and arguments.
 type Session struct {
-	StdIn  io.Writer   // input to be written to the console
-	StdOut io.Reader   // output coming from the console
-	StdErr io.Reader   // error output from the shell
-	Input  chan string // incoming lines of input
-	Output chan string // outgoing lines of input
-	Cmd    *exec.Cmd   // cmd that holds this cmd instance
-	PTY    *os.File    // the tty for the session
-	closed bool        // indicates input channels have been closed
+	StdIn      io.Writer   // input to be written to the console
+	StdOut     io.Reader   // output coming from the console
+	StdErr     io.Reader   // error output from the shell
+	Input      chan string // incoming lines of input
+	Output     chan string // outgoing lines of input
+	Cmd        *exec.Cmd   // cmd that holds this cmd instance
+	PTY        *os.File    // the tty for the session
+	stdOutDone bool
+	stdInDone  bool
+	stdErrdone bool
 }
 
 // WriteString writes a string to the console as if you wrote
@@ -53,6 +56,9 @@ func (i *Session) startErrorReader() {
 			fmt.Println("Error reader passed output to channel:", text)
 		}
 	}
+
+	// safely flag this as done
+	i.stdErrdone = true
 }
 
 // startOutputReader reads output and puts it into the output channel
@@ -71,6 +77,7 @@ func (i *Session) startOutputReader() {
 			fmt.Println("Reader passed text to outut channel:", text)
 		}
 	}
+	i.stdOutDone = true
 }
 
 // startInputForwarder starts a forwarder of input channel
@@ -82,6 +89,7 @@ func (i *Session) startInputForwarder() {
 		}
 		i.writeString(l)
 	}
+	i.stdInDone = true
 }
 
 // Exit exits the running command and closes the input channel
@@ -103,9 +111,7 @@ func (i *Session) Init() {
 func (i *Session) Write(s string) {
 
 	// dont actually write if the command has completed
-	if !i.closed {
-		i.Input <- s
-	}
+	i.Input <- s
 }
 
 // closeWhenCompleted closes ouput channels to cause readers to
@@ -113,16 +119,25 @@ func (i *Session) Write(s string) {
 func (i *Session) closeWhenCompleted() {
 
 	if Debug {
-		fmt.Println("Spawned command as PID", i.Cmd.Process.Pid)
+		fmt.Println("Waiting for session to complete.")
+	}
+	i.Cmd.Wait()
+
+	if Debug {
+		fmt.Println("Waiting for all readers and writers to be done.")
 	}
 
-	i.Cmd.Wait()
-	if Debug {
-		fmt.Println("Command exited. Closing input channel.")
+	// wait for all readers to complete reads before closing channels
+	for !i.stdErrdone || !i.stdInDone || !i.stdOutDone {
+		time.Sleep(time.Millisecond)
 	}
 
 	// indicate the session is closed and close our channels
-	i.closed = true
+	if Debug {
+		fmt.Println("Command exited. Closing all channels.")
+	}
+
+	// close our channels to cause channel readers to complete work
 	close(i.Input)
 	close(i.Output)
 
@@ -165,6 +180,10 @@ func NewSession(command string, args []string) (*Session, error) {
 	session.PTY, err = pty.Start(session.Cmd)
 	if err != nil {
 		return &session, err
+	}
+
+	if Debug {
+		fmt.Println("Spawned command as PID", session.Cmd.Process.Pid)
 	}
 
 	// start channeling output and other requirements
