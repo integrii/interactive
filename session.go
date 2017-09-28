@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"os/exec"
 	"time"
@@ -100,11 +101,24 @@ func (i *Session) Exit() {
 // Init runs things required to initalize a session.
 // No need to call outside of NewInteractiveSession (which does
 // it for you)
-func (i *Session) Init() {
+func (i *Session) Init(timeout time.Duration) error {
+	// kick off the command and ensure it closes when done
+	var err error
+	i.PTY, err = pty.Start(i.Cmd)
+	if err != nil {
+		return err
+	}
+
+	if Debug {
+		fmt.Println("Spawned command as PID", i.Cmd.Process.Pid)
+	}
+
 	go i.startOutputReader()
 	go i.startErrorReader()
 	go i.startInputForwarder()
-	go i.closeWhenCompleted()
+	go i.closeWhenCompleted(timeout)
+
+	return nil
 }
 
 // Write writes an output line into the session
@@ -116,15 +130,34 @@ func (i *Session) Write(s string) {
 
 // closeWhenCompleted closes ouput channels to cause readers to
 // end gracefully when the command completes
-func (i *Session) closeWhenCompleted() {
+func (i *Session) closeWhenCompleted(timeout time.Duration) {
 
 	if Debug {
 		fmt.Println("Waiting for session to complete.")
 	}
-	i.Cmd.Wait()
 
-	if Debug {
-		fmt.Println("Waiting for all readers and writers to be done.")
+	// if the timeout is greater than 0, start a timer for it
+	if timeout > 0 {
+
+		// kill the cmd if it goes too long
+		done := make(chan error)
+		go func() { done <- i.Cmd.Wait() }()
+		select {
+		case err := <-done:
+			// exited on its own
+			if err != nil {
+				log.Println("Interactive session exited with error:", err)
+			}
+		case <-time.After(timeout):
+			// timed out. force close.
+			i.ForceClose()
+		}
+	} else {
+		// if no timeout is specified, just start the command
+		err := i.Cmd.Wait()
+		if err != nil {
+			log.Println("Interactive session exited with error:", err)
+		}
 	}
 
 	// wait for all readers to complete reads before closing channels
@@ -143,8 +176,11 @@ func (i *Session) closeWhenCompleted() {
 
 }
 
-// NewSession starts a new interactive command session
-func NewSession(command string, args []string) (*Session, error) {
+// NewSessionWithTimeout starts a new session but kills it
+// if it runs longer than the specified timeout.  Pass  0
+// for no timeout or use NewSession()
+func NewSessionWithTimeout(command string, args []string, timeout time.Duration) (*Session, error) {
+
 	var session Session
 	var err error
 
@@ -176,22 +212,16 @@ func NewSession(command string, args []string) (*Session, error) {
 		fmt.Println("Starting command:", session.Cmd.Args)
 	}
 
-	// kick off the command and ensure it closes when done
-	session.PTY, err = pty.Start(session.Cmd)
-	if err != nil {
-		return &session, err
-	}
-
-	if Debug {
-		fmt.Println("Spawned command as PID", session.Cmd.Process.Pid)
-	}
-
 	// start channeling output and other requirements
-	session.Init()
+	err = session.Init(timeout)
 
 	// command is online and healthy, return to the user
 	return &session, err
+}
 
+// NewSession starts a new interactive command session
+func NewSession(command string, args []string) (*Session, error) {
+	return NewSessionWithTimeout(command, args, 0)
 }
 
 // ForceClose issues a force kill to the command (SIGKILL)
