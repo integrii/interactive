@@ -56,4 +56,4 @@ For details type `warranty'.
 2
 ```
 
-You can run nearly anything this way, because interactive uses a PTY.
+You can run nearly anything you could from your console this way.

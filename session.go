@@ -8,8 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"time"
-
-	"github.com/kr/pty"
 )
 
 // Debug enables debug output for this package to console
@@ -24,7 +22,6 @@ type Session struct {
 	Input      chan string // incoming lines of input
 	Output     chan string // outgoing lines of input
 	Cmd        *exec.Cmd   // cmd that holds this cmd instance
-	PTY        *os.File    // the tty for the session
 	stdOutDone bool
 	stdInDone  bool
 	stdErrdone bool
@@ -36,7 +33,7 @@ func (i *Session) writeString(s string) error {
 	if Debug {
 		fmt.Println("Writing string:", s)
 	}
-	_, err := i.PTY.WriteString(s + "\r")
+	_, err := io.WriteString(i.StdIn, s+"\n")
 	return err
 }
 
@@ -64,7 +61,7 @@ func (i *Session) startErrorReader() {
 
 // startOutputReader reads output and puts it into the output channel
 func (i *Session) startOutputReader() {
-	reader := bufio.NewScanner(i.PTY)
+	reader := bufio.NewScanner(i.StdOut)
 	if Debug {
 		fmt.Println("Output reader looking for output")
 	}
@@ -104,7 +101,7 @@ func (i *Session) Exit() {
 func (i *Session) Init(timeout time.Duration) error {
 	// kick off the command and ensure it closes when done
 	var err error
-	i.PTY, err = pty.Start(i.Cmd)
+	err = i.Cmd.Start()
 	if err != nil {
 		return err
 	}
