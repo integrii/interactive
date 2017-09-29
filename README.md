@@ -1,7 +1,7 @@
 # interactive 🐚
 Interactive is a package for easily executing and interacting with running commands using channels.  Uses a PTY and simple channels for inputting lines of strings and reading lines of strings.  You can always go direct to the running process and write strings, though, too.
 
-Automate nearly any command line execution in a go program!
+Automate nearly any command line execution in a go program!  Special thanks to [github.com/kr/pty](https://github.com/kr/pty)
 
 ## Get It
 
