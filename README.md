@@ -1,7 +1,7 @@
 # interactive 🐚
-Interactive is a package for easily executing and interacting with running commands using channels.  Uses a PTY and simple channels for inputting lines of strings and reading lines of strings.  You can always go direct to the running process and write strings, though, too.
+Interactive is a package for easily executing and interacting with CLI commands using channels.  Uses a PTY and simple channels for inputting lines of strings and reading lines of strings.  You can always go direct to the running process and write bytes, though, too.  A cool example of this in use is my [headlessChrome](https://github.com/integrii/headlessChrome) package which starts headless chrome with `--repl` (a command line javascript console interface) for very, very realistic website automation.
 
-Automate nearly any command line execution in a go program!  Special thanks to [github.com/kr/pty](https://github.com/kr/pty)
+Automate any command line task with a go program!  Special thanks to [github.com/kr/pty](https://github.com/kr/pty)
 
 ## Get It
 
@@ -25,9 +25,6 @@ func main() {
 
   // start a concurrent output reader from the output channel of our command
   go outputPrinter(bc.Output)
-
-  // wait a second for the process to init
-  time.Sleep(time.Second)
 
   // write 1 + 1 to the bc prompt
   bc.Write(`1 + 1`)
@@ -56,4 +53,4 @@ For details type `warranty'.
 2
 ```
 
-You can run nearly anything you could from your console this way.
+You can run and control nearly anything you could from your console this way.
