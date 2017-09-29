@@ -18,19 +18,18 @@ func TestInteractiveCommandBC(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	print("test")
 
 	bc.Write(`1 + 1`)
-	bc.Write(`1 + 1`)
-	time.Sleep(time.Second)
 	bc.Write(`quit`)
-	if o := <-bc.Output; o != "2" {
-		t.Fail()
-	}
-	time.Sleep(time.Second * 3)
+	time.Sleep(time.Second)
+	outputPrinter(bc.Output)
 
 }
 
+// ExampleNewSession shows how to make a new interactive session
+// with a command.  Output comes from the string channel bc.Output
+// while iput is passed in with the bc.Write func.  Note that we
+// named the interactive session "bc" here because we're running bc.
 func ExampleNewSession() {
 	// Start the command "bc" (a CLI calculator)
 	bc, err := interactive.NewSession("bc", []string{})
@@ -53,12 +52,11 @@ func ExampleNewSession() {
 
 	// wait one second for the output to come and be displayed
 	time.Sleep(time.Second)
-	// Output:
-	// 2
 }
 
 // ExampleSessionWithOutput shows how to start a command that only runs
-// for one second before being killed.
+// for one second before being killed.  The 1 + 1 operation never happens
+// becauase the command is killed prior to its running
 func ExampleNewSessionWithTimeout() {
 
 	bc, err := interactive.NewSessionWithTimeout("bc", []string{}, time.Duration(time.Second))
@@ -66,10 +64,8 @@ func ExampleNewSessionWithTimeout() {
 		log.Fatal(err)
 	}
 
-	go outputPrinter(bc.Output)
-	time.Sleep(time.Second)
+	time.Sleep(time.Second * 2)
 	bc.Write(`1 + 1`) // this will never happen and there will not be any output
-	// Output:
 }
 
 func outputPrinter(c chan string) {

@@ -57,7 +57,6 @@ func (i *Session) startInputForwarder() {
 // Write writes an output line into the session
 func (i *Session) Write(s string) {
 	debug("Writing", s, "to input channel")
-	// dont actually write if the command has completed
 	i.Input <- s
 }
 
