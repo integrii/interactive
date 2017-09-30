@@ -129,8 +129,8 @@ func (i *Session) cleanupWhenDone() {
 	// indicate the session is closed and close our channels
 	debug("Command exited. Closing input and output channels.")
 
-	// close our channels to cause channel readers to complete work
-	close(i.Input)
+	// close our output channel to cause upstream channel readers
+	// to complete work
 	close(i.Output)
 
 }
