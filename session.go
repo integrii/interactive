@@ -97,6 +97,11 @@ func (i *Session) Init() error {
 
 }
 
+// Close shuts down the interative session tty cleanly
+func (i *Session) Close() error {
+	return i.pty.Close()
+}
+
 // cleanupWhenDone cleans up channels when done or kills
 // the process if it runs too long
 func (i *Session) cleanupWhenDone() {
