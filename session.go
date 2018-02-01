@@ -1,3 +1,4 @@
+// Package interactive allows you to easily execuate and interact with processes using Go channels.
 package interactive
 
 import (
