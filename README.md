@@ -18,7 +18,7 @@ Automate any command line task with a go program!  Special thanks to [github.com
 
 func main() {
   // Start the command "bc" (a CLI calculator)
-  bc, err := interactive.NewInteractiveSession("bc", []string{})
+  bc, err := interactive.NewSession("bc", []string{})
   if err != nil {
     panic(err)
   }
